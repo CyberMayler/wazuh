@@ -1,0 +1,135 @@
+<!-- Local rules -->
+
+<!-- Modify it at your will. -->
+<!-- Copyright (C) 2015, Wazuh Inc. -->
+
+<!-- Example -->
+<group name="local,syslog,sshd,">
+
+  <!--
+  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2
+  -->
+  <rule id="100001" level="5">
+    <if_sid>5716</if_sid>
+    <srcip>1.1.1.1</srcip>
+    <description>sshd: authentication failed from IP 1.1.1.1.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+  
+  <!-- desabilita SELinux permission check de aparecer nos logs by mailer--> 
+  <rule id="100006" level="0">
+    <if_sid>80730</if_sid>
+    <description>No alert about nagios logs</description>
+  </rule>
+</group>
+
+<!-- Integração Alien-vault by mailer-->
+<group name="ips_maliciosos,">
+  <rule id="100200" level="10">
+    <if_group>web|attack|attacks</if_group>
+    <list field="srcip" lookup="address_match_key">etc/lists/blacklist-alienvault</list>
+    <description>Apache: IP $(srcip) in black list.</description>
+  </rule>
+</group>
+
+<!-- Active Response Postfix + Modsecurity by mailer-->
+<group name="email_collection">
+    <rule id="100201" level="10">
+        <if_sid>3396, 3398</if_sid>
+        <mitre>
+            <id>T1114</id>
+        </mitre>
+        <description>Postfix: Email Collection Attempt Detected.</description>
+    </rule>
+</group>
+
+<group name="block_malicious_ips">
+    <rule id="100202" level="10">
+        <if_group>email_collection</if_group>
+        <list field="srcip" lookup="address_match_key">etc/lists/blacklist-alienvault</list>
+        <description>Postfix: IP $(srcip) in black list due to Email Collection attempt.</description>
+    </rule>
+</group>
+
+<!-- Ingest dos logs do Packetbeat by mailer-->
+<group name="linux,packetbeat,">
+    <rule id="200300" level="3">
+        <decoded_as>json</decoded_as>
+        <field name="method">QUERY</field>
+        <field name="dns.resolved_ip">\.+</field>
+        <mitre>
+          <id>T1071</id>
+        </mitre>
+        <description>Linux: DNS Query to $(dns.question.name)</description>
+        <options>no_full_log</options>
+        <group>dns</group>
+    </rule>
+    <rule id="200301" level="3">
+        <decoded_as>json</decoded_as>
+        <field name="event.dataset">tls</field>
+        <field name="tls.established">true</field>
+        <mitre>
+          <id>T1071</id>
+        </mitre>
+        <description>Linux: HTTPS connection established to $(tls.client.server_name)</description>
+        <options>no_full_log</options>
+        <group>tls</group>
+    </rule>
+    <rule id="200302" level="3">
+        <decoded_as>json</decoded_as>
+        <field name="type">http</field>
+        <mitre>
+          <id>T1071</id>
+        </mitre>
+        <description>Linux: HTTP connection established to $(destination.ip)</description>
+        <options>no_full_log</options>
+        <group>http</group>
+    </rule>
+<!-- EXCLUDE PACKETBEAT ICMP -->
+
+    <rule id="200303" level="1">
+        <decoded_as>json</decoded_as>
+        <field name="network.transport">icmp</field>
+        <mitre>
+          <id>T1071</id>
+        </mitre>
+        <description>Packetbeat: ICMP flow to $(destination.ip)</description>
+        <options>no_full_log</options>
+        <group>icmp</group>
+    </rule>
+
+</group>
+
+<!-- Rule to exclude noisy logs -->
+<group name="linux,packetbeat,exclude,">
+    <rule id="200310" level="1" frequency="2" timeframe="900">
+        <if_matched_sid>200300</if_matched_sid>
+        <same_field>dns.question.name</same_field>
+        <mitre>
+          <id>T1071</id>
+        </mitre>
+        <description>Linux: Frequent DNS Query</description>
+        <options>no_log</options>
+        <group>dns</group>
+    </rule>
+    <rule id="200311" level="1" frequency="2" timeframe="900">
+        <if_matched_sid>200301</if_matched_sid>
+        <same_field>tls.client.server_name</same_field>
+        <mitre>
+          <id>T1071</id>
+        </mitre>
+        <description>Linux: Frequent HTTPS Connection</description>
+        <options>no_full_log</options>
+        <group>tls</group>
+    </rule>
+    <rule id="200312" level="1" frequency="2" timeframe="900">
+        <if_matched_sid>200302</if_matched_sid>
+        <same_field>destination.ip</same_field>
+        <mitre>
+          <id>T1071</id>
+        </mitre>
+        <description>Linux: Frequent HTTP Connection</description>
+        <options>no_full_log</options>
+        <group>http</group>
+    </rule>
+</group>
