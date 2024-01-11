@@ -42,7 +42,7 @@
   <rule id="100011" level="14">
     <field name="abuseipdb.source.rule" type="pcre2">^100010$</field>
     <field name="abuseipdb.abuse_confidence_score" type="pcre2" negate="yes">^0$</field>
-    <description>AbuseIPDB: Resultado: $(srcip) possui $(abuseipdb.abuse_confidence_score)% de ser malicioso.</description>
+    <description>AbuseIPDB: Resultado: $(abuseipdb.source.srcip) possui $(abuseipdb.abuse_confidence_score)% de ser malicioso.</description>
     <group>abuseIPDB,</group>
   </rule>
 </group>  
