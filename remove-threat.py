@@ -124,7 +124,9 @@ def main(argv):
                 sys.exit(OS_INVALID)
 
         try:
-            os.remove(msg.alert["parameters"]["alert"]["data"]["virustotal"]["source"]["file"])
+            file_path = msg.alert["parameters"]["alert"]["data"]["virustotal"]["source"]["file"]
+            if os.path.exists(file_path):
+                os.remove(file_path)
             write_debug_file(argv[0], json.dumps(msg.alert) + " Successfully removed threat")
         except OSError as error:
             write_debug_file(argv[0], json.dumps(msg.alert) + "Error removing threat")
